@@ -1,0 +1,101 @@
+MYSKEF — play Windows games on your Mac
+=========================================
+
+Myskef runs Windows games and programs (Epic Games, Steam, or any .exe) on a
+Mac, for free. It isn't an official app from Apple, Epic or Valve: it's a
+friend's project built on free software. You need to own the games you play.
+
+
+WHAT YOU NEED
+-------------
+- A Mac with Apple silicon (M1 or newer) is best. Intel Macs work too.
+- macOS 13 Ventura or newer (14 Sonoma or newer for Apple's D3DMetal option).
+- About 2 GB free, plus space for your games.
+- An internet connection for the first setup and for downloading games.
+
+
+INSTALLING
+----------
+1. Unzip, and drag Myskef into your Applications folder.
+2. Open it. macOS will say it can't check the app, because it isn't from
+   the App Store or a registered developer. That's expected:
+     - macOS 15 Sequoia or newer: click Done, then open
+       System Settings → Privacy & Security, scroll down, click
+       "Open Anyway" next to Myskef, and confirm.
+     - macOS 13–14: right-click Myskef → Open → Open.
+   You only do this once.
+3. The first time, Myskef downloads what it needs (about 1 GB). On Apple
+   silicon it may ask to install Rosetta 2, Apple's Intel translator: say yes.
+4. If the window still has to be built on your Mac (Intel Macs, or a copy
+   without a built window), Myskef asks to install Apple's free Command Line
+   Tools first (5–15 minutes). Then open Myskef again; building takes about a
+   minute, once.
+
+
+QUICK START
+-----------
+- Epic Games: Log in → sign in on Epic's website → paste the code it shows.
+  Download a game, press Play.
+- Steam: Install Steam → sign in inside Steam's own window. Install games in
+  Steam or from Myskef's Steam list, press Play.
+- Anything else: drag an .exe or .msi onto Myskef (Programs page).
+- The Guide page inside Myskef explains everything, including which graphics
+  option to pick. The activity log (bottom of the sidebar, Shift-Cmd-L) shows
+  what's happening.
+
+
+GRAPHICS OPTIONS IN ONE LINE EACH
+---------------------------------
+- DXVK      DirectX → Vulkan → Metal. Most tested; the safe default.
+- DXMT      DirectX 11 → Metal in one step. Less work for the processor;
+            experimental.
+- D3DMetal  Apple's own translator. Often fastest for big 3D games and the
+            only one for DirectX 12. Per game; 230 MB extra download.
+- Wine built-in  DirectX → OpenGL. Slowest; a last resort.
+Change it for all games in Settings, or per game in its ⋯ menu → Game
+settings. If a game crashes or looks wrong, go back to DXVK.
+
+
+SMOOTHER GAMES
+--------------
+- Plug in, and turn off Low Power Mode.
+- Close Chrome and other heavy apps.
+- Lower the game's resolution and graphics settings.
+- If a game gets slower over a long session, restart it.
+- Myskef warns you (orange "Running" dot) when your Mac is hot, out of
+  memory or in Low Power Mode.
+
+
+IF SOMETHING GOES WRONG
+-----------------------
+- A game won't start: read the reason on its Play button and in the
+  activity log, then try another graphics option.
+- "Epic isn't reachable": your network (school Wi-Fi, a VPN…) is blocking
+  Epic. Myskef starts the game offline; try another network for online play.
+- Steam's window is black: Steam page → set Steam's drawing to Software.
+- Myskef shows a simple menu instead of its window: click "Copy error" and
+  send it to whoever gave you Myskef.
+
+
+PRIVACY
+-------
+Myskef never sees your Steam password (you sign in inside Steam's window).
+For Epic you paste a one-time code from Epic's website. Your sign-ins stay on
+your Mac. Myskef only talks to Epic, Steam and the sites it downloads its
+parts from (GitHub, Epic, Steam).
+
+
+REMOVING MYSKEF
+---------------
+Delete Myskef from Applications, then delete the folder
+~/Library/Application Support/Myskef (in Finder: Go → Go to Folder…).
+That folder holds the Windows setup and every downloaded game.
+
+
+MADE FROM FREE SOFTWARE
+-----------------------
+Wine (LGPL), Gcenx's macOS Wine builds, DXVK (zlib), DXMT (LGPL),
+MoltenVK (Apache 2.0), legendary (GPL-3.0) and, only if you choose it,
+Apple's D3DMetal (Apple's licence). Myskef downloads these from their
+official sources when needed. Not affiliated with Apple, Epic Games, Valve
+or any game studio.

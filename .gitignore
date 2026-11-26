@@ -1,0 +1,6 @@
+.DS_Store
+Myskef.app/Contents/MacOS/MyskefUI
+Myskef.app/Contents/MacOS/MyskefUI.hash
+Myskef.app/Contents/MacOS/*.building
+/ui-*
+/Myskef.zip*

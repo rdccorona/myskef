@@ -1,0 +1,103 @@
+#!/bin/bash
+# ---------------------------------------------------------------------------
+#  Myskef — Windows games on your Mac, built on Wine.
+#
+#  This launcher opens Myskef's window. The window is a small SwiftUI app
+#  (Resources/ui/MyskefUI.swift) that is compiled on this Mac the first time
+#  Myskef opens, using Apple's free Command Line Tools, and reused after that.
+#  If that isn't possible, Myskef opens its classic dialog menu instead.
+#  The real work is done by Resources/myskef-core.sh.
+# ---------------------------------------------------------------------------
+# Always run natively on Apple silicon. If this was started under Rosetta (for
+# example with "Open using Rosetta" ticked), everything Myskef starts would be
+# translated too: a slower window and the Intel build of every helper.
+if [ "$(sysctl -in sysctl.proc_translated 2>/dev/null)" = "1" ] && [ -z "${MYSKEF_NATIVE:-}" ]; then
+    export MYSKEF_NATIVE=1
+    exec arch -arm64 /bin/bash "$0" "$@"
+fi
+APP="$(cd "$(dirname "$0")/.." && pwd)"          # …/Myskef.app/Contents
+RES="$APP/Resources"
+SUPPORT="$HOME/Library/Application Support/Myskef"
+LOGS="$SUPPORT/logs"
+SRC="$RES/ui/MyskefUI.swift"
+BUILD_LOG="$LOGS/ui-build.log"
+mkdir -p "$LOGS"
+export MYSKEF_RES="$RES"
+
+classic() { exec /bin/bash "$RES/myskef-core.sh" menu; }
+
+ask() {  # ask "message" "button 1" "button 2"  -> prints the button clicked
+    osascript - "$1" "$2" "$3" <<'APPLESCRIPT'
+on run argv
+    try
+        set r to display dialog (item 1 of argv) with title "Myskef" buttons {item 2 of argv, item 3 of argv} default button (item 3 of argv) with icon note
+        return button returned of r
+    on error
+        return ""
+    end try
+end run
+APPLESCRIPT
+}
+
+notify() {
+    osascript - "$1" <<'APPLESCRIPT' >/dev/null 2>&1
+on run argv
+    display notification (item 1 of argv) with title "Myskef"
+end run
+APPLESCRIPT
+}
+
+[ "${MYSKEF_CLASSIC:-0}" = 1 ] && classic
+[ -f "$SRC" ] || classic
+
+hash="$(uname -m)-$(shasum -a 256 "$SRC" | cut -c1-16)"
+
+# Keep the built window inside the app when possible (so macOS shows it as
+# Myskef); if the app is read-only, keep it in Application Support instead.
+if [ -w "$APP/MacOS" ]; then BIN="$APP/MacOS/MyskefUI"; else BIN="$SUPPORT/ui/MyskefUI"; fi
+# The .hash file lists one line per processor type the window was built for
+# (releases built by GitHub contain both Apple silicon and Intel).
+if [ -x "$BIN" ] && grep -qxF "$hash" "$BIN.hash" 2>/dev/null; then
+    exec "$BIN"
+fi
+
+# ---- first launch (or a new version): build the window
+if ! xcode-select -p >/dev/null 2>&1 || ! xcrun --find swiftc >/dev/null 2>&1; then
+    answer=$(ask "Myskef's window is built on your Mac the first time it opens, using Apple's free Command Line Tools. They aren't installed yet.
+
+Install them now? It's a free download from Apple and takes about 5–15 minutes. When it's finished, open Myskef again.
+
+Until then, Myskef uses its classic menu." "Use classic menu" "Install tools")
+    [ "$answer" = "Install tools" ] && xcode-select --install >/dev/null 2>&1
+    classic
+fi
+
+notify "Building Myskef's window. This happens once and takes about a minute…"
+mkdir -p "$(dirname "$BIN")"
+tmp="$BIN.building"
+{
+    echo "=== Building Myskef UI $(date) ==="
+    echo "swiftc: $(xcrun --find swiftc)"
+    xcrun swiftc --version 2>&1
+} > "$BUILD_LOG"
+if xcrun swiftc -swift-version 5 -O -parse-as-library \
+        -target "$(uname -m)-apple-macos13.0" \
+        -o "$tmp" "$SRC" >>"$BUILD_LOG" 2>&1; then
+    mv -f "$tmp" "$BIN"
+    echo "$hash" > "$BIN.hash"
+    echo "=== OK ===" >> "$BUILD_LOG"
+    exec "$BIN"
+fi
+
+rm -f "$tmp"
+answer=$(ask "Myskef couldn't build its window on this Mac, so it's using the classic menu for now.
+
+Click “Copy error”, then paste it to Claude so it can be fixed." "Classic menu" "Copy error")
+if [ "$answer" = "Copy error" ]; then
+    if grep -q "error:" "$BUILD_LOG"; then
+        { sed -n 2,4p "$BUILD_LOG"; grep -A3 "error:" "$BUILD_LOG" | head -n 60; } | pbcopy
+    else
+        tail -n 40 "$BUILD_LOG" | pbcopy
+    fi
+fi
+classic

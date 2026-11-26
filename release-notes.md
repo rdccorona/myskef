@@ -1,0 +1,4 @@
+- Myskef now updates itself: when a new version is out you'll see a banner with what's new and an **Update now** button.
+- The window comes ready-built for Apple silicon and Intel Macs, so Apple's developer tools are no longer needed.
+- New **Guide** page, explanations for every setting, and **Tools → Share Myskef with friends**.
+- Steam is closed in the background when you play an Epic game (frees memory), and Myskef warns you when Low Power Mode slows games down.

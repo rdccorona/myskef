@@ -271,7 +271,6 @@ final class Myskef: ObservableObject, @unchecked Sendable {
     @Published var update: UpdateInfo? = nil
     @Published var updateDismissed = false
     @Published var updatesConfigured = true
-    private var updateTimer: Timer?
     private var swapAtGameStart: Double? = nil
     private var openingSince: [String: Date] = [:]
     private var runningSince: [String: Date] = [:]
@@ -302,11 +301,8 @@ final class Myskef: ObservableObject, @unchecked Sendable {
         pollTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
             self?.pollRunning()
         }
-        // look for a newer Myskef shortly after opening, then every 6 hours
+        // look for a newer Myskef once, shortly after opening (no repeated checks)
         DispatchQueue.main.asyncAfter(deadline: .now() + 6) { [weak self] in self?.autoCheckForUpdates() }
-        updateTimer = Timer.scheduledTimer(withTimeInterval: 6 * 3600, repeats: true) { [weak self] _ in
-            self?.autoCheckForUpdates()
-        }
         // files opened with Finder's "Open With → Myskef" or dropped on the Dock icon
         OpenRequests.handler = { [weak self] urls in
             guard let self = self, let u = urls.first else { return }
@@ -2342,7 +2338,7 @@ struct SettingsView: View {
                 LabeledContent("Myskef", value: model.status["version"] ?? "")
                 if model.updatesConfigured {
                     ExplainedToggle(title: "Check for updates automatically",
-                                    text: "Myskef looks for a new version when it opens and every few hours, and asks before installing.",
+                                    text: "Each time Myskef opens, it asks once whether there's a new version (a tiny request), and asks you before installing.",
                                     isOn: Binding(get: { UserDefaults.standard.object(forKey: "autoUpdateCheck") as? Bool ?? true },
                                                   set: { UserDefaults.standard.set($0, forKey: "autoUpdateCheck"); model.objectWillChange.send() }))
                     HStack {

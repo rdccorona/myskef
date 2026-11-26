@@ -1,11 +1,14 @@
-# Publishes a Myskef release whenever a version tag (v2.12.0, …) is pushed.
+# Publishes a Myskef release whenever main gets a new version number
+# (APP_VERSION in myskef-core.sh, matching Info.plist). Pushes that keep the
+# same version are only checked, not released.
 # GitHub builds the window for Apple silicon and Intel, so nobody needs
 # Apple's developer tools, then attaches Myskef.zip + its SHA-256 checksum.
 # Every Myskef with this repository in Resources/update.conf offers the update.
 name: Release
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
@@ -14,13 +17,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check the version matches the tag
+      - name: Read the version
+        id: ver
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          v="${GITHUB_REF_NAME#v}"
-          grep -q "APP_VERSION=\"$v\"" Myskef.app/Contents/Resources/myskef-core.sh || { echo "::error::APP_VERSION in myskef-core.sh is not $v"; exit 1; }
-          [ "$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Myskef.app/Contents/Info.plist)" = "$v" ] || { echo "::error::Info.plist version is not $v"; exit 1; }
+          v=$(sed -n 's/^APP_VERSION="\(.*\)"$/\1/p' Myskef.app/Contents/Resources/myskef-core.sh | head -n1)
+          p=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Myskef.app/Contents/Info.plist)
+          [ -n "$v" ] && [ "$v" = "$p" ] || { echo "::error::APP_VERSION ($v) and Info.plist ($p) must match"; exit 1; }
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          if gh release view "v$v" >/dev/null 2>&1; then
+            echo "Release v$v already exists: nothing to publish."
+            echo "publish=no" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=yes" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build the window (Apple silicon + Intel)
+        if: steps.ver.outputs.publish == 'yes'
         run: |
           SRC=Myskef.app/Contents/Resources/ui/MyskefUI.swift
           xcrun swiftc --version
@@ -34,15 +48,18 @@ jobs:
           codesign --force -s - Myskef.app/Contents/MacOS/MyskefUI
 
       - name: Package
+        if: steps.ver.outputs.publish == 'yes'
         run: |
           ditto -c -k --sequesterRsrc --keepParent Myskef.app Myskef.zip
           shasum -a 256 Myskef.zip | awk '{print $1 "  Myskef.zip"}' > Myskef.zip.sha256
           cp "Myskef.app/Contents/Resources/Read me first.txt" Read-me-first.txt
 
       - name: Publish the release
+        if: steps.ver.outputs.publish == 'yes'
         env:
           GH_TOKEN: ${{ github.token }}
+          V: ${{ steps.ver.outputs.version }}
         run: |
-          [ -f release-notes.md ] || echo "Myskef ${GITHUB_REF_NAME#v}" > release-notes.md
-          gh release create "$GITHUB_REF_NAME" Myskef.zip Myskef.zip.sha256 Read-me-first.txt \
-            --title "Myskef ${GITHUB_REF_NAME#v}" --notes-file release-notes.md
+          [ -f release-notes.md ] || echo "Myskef $V" > release-notes.md
+          gh release create "v$V" Myskef.zip Myskef.zip.sha256 Read-me-first.txt \
+            --target "$GITHUB_SHA" --title "Myskef $V" --notes-file release-notes.md

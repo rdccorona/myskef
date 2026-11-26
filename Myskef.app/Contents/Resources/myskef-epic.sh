@@ -372,6 +372,13 @@ installed)
         | awk -F'\t' '{ print "INSTALLED\t" $1 "\t" $2 "\t" $3 "\t" $5 "\t" $6 "\t" $7 }' > "$cache.$$"
     if [ -s "$cache.$$" ]; then mv -f "$cache.$$" "$cache"; cat "$cache"; else rm -f "$cache.$$"; fi
     ;;
+prepare)
+    # Setup: install legendary now, so the first Epic sign-in doesn't wait for it.
+    ensure_config
+    get_legendary
+    echo "legendary ready"
+    exit 0
+    ;;
 login-url)
     echo "$EPIC_LOGIN_URL"
     ;;

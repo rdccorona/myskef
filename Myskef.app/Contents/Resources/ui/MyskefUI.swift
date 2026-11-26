@@ -144,6 +144,27 @@ struct GraphicsModeCard: View {
     }
 }
 
+/// One line of "Installed parts" in Settings.
+struct PartRow: View {
+    let name: String
+    let detail: String
+    let ok: Bool
+    let missing: String
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: ok ? "checkmark.circle.fill" : "circle.dashed")
+                .foregroundColor(ok ? .green : .secondary)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(name)
+                Text(ok ? detail : missing).font(.caption).foregroundColor(.secondary)
+            }
+            Spacer()
+            Text(ok ? "Installed" : "Not yet").font(.caption.weight(.semibold))
+                .foregroundColor(ok ? .green : .secondary)
+        }
+    }
+}
+
 /// A switch with a one-line explanation under it.
 struct ExplainedToggle: View {
     let title: String
@@ -1155,6 +1176,10 @@ struct ContentView: View {
                 .frame(width: 232)
             ZStack(alignment: .bottom) {
                 VStack(spacing: 0) {
+                if model.loadedStatus && !model.isSetUp && page != .library {
+                    SetupBanner()
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
                 if let u = model.update, !model.updateDismissed {
                     UpdateBanner(info: u)
                         .transition(.move(edge: .top).combined(with: .opacity))
@@ -1395,7 +1420,7 @@ struct LibraryView: View {
                 } else if !model.isSetUp {
                     Banner(icon: "sparkles", color: Theme.pink,
                            title: "Let's set up Myskef",
-                           text: "Myskef downloads the free Wine engine and creates a private Windows space (a “bottle”) for your games. It takes a few minutes, once.",
+                           text: "One click installs everything Myskef needs: the free Wine engine (about 1 GB), a private Windows space (a “bottle”) for your games, the DXVK graphics layer and the Epic Games helper. It takes a few minutes, once.",
                            button: "Set up", action: { model.setup() })
                         .padding(.top, 30)
                 } else {
@@ -2298,6 +2323,27 @@ struct SettingsView: View {
                                               set: { model.set("AVX", $0 ? "on" : "off") }))
             }
 
+            Section("Installed parts") {
+                PartRow(name: "Rosetta 2", detail: "Apple's Intel translator", ok: model.status["rosetta"] == "ok",
+                        missing: "Installed during setup")
+                PartRow(name: "Wine engine", detail: engineText, ok: (model.status["engine"] ?? "none") != "none",
+                        missing: "Installed during setup")
+                PartRow(name: "Windows bottle", detail: "Where games are installed", ok: model.status["bottle"] == "yes",
+                        missing: "Created during setup")
+                PartRow(name: "DXVK", detail: "Graphics layer", ok: model.status["dxvk"] == "yes",
+                        missing: "Installed during setup")
+                PartRow(name: "legendary", detail: "Epic Games helper", ok: model.status["legendary"] == "yes",
+                        missing: "Installed during setup or at the first Epic sign-in")
+                PartRow(name: "Steam", detail: "Installed in the bottle", ok: model.status["steam"] == "yes",
+                        missing: "Optional: Steam page → Install Steam")
+                PartRow(name: "DXMT", detail: "Graphics layer", ok: (model.status["dxmt"] ?? "no") != "no",
+                        missing: "Optional: downloaded when a game uses it")
+                PartRow(name: "D3DMetal", detail: "Apple's graphics layer", ok: model.status["d3dmetal"] == "yes",
+                        missing: "Optional: downloaded when a game uses it")
+                Text("Missing parts are downloaded automatically when they're needed. “Set up / repair Myskef” below reinstalls the essentials.")
+                    .font(.caption).foregroundColor(.secondary)
+            }
+
             Section("Engine") {
                 LabeledContent("Wine engine") {
                     HStack {
@@ -2591,7 +2637,7 @@ struct GuideView: View {
                 }
 
                 GuideSection(icon: "play.circle.fill", title: "Getting started") {
-                    GuideStep(n: 1, text: "Myskef downloads what it needs the first time (the Wine engine, about 1 GB). If something is missing later, use Settings → Set up / repair Myskef.")
+                    GuideStep(n: 1, text: "Click Set up in the banner at the top. Myskef installs everything it needs by itself (Wine engine, Windows bottle, graphics layer, Epic helper; about 1 GB). Settings → Installed parts shows what's there; Set up / repair Myskef fixes anything missing.")
                     GuideStep(n: 2, text: "Epic Games: click Log in, sign in on Epic's website, and paste the code it shows. Then download a game and press Play.")
                     GuideStep(n: 3, text: "Steam: click Install Steam and sign in inside Steam's own window. Install games in Steam or from Myskef's Steam list, then press Play.")
                     GuideStep(n: 4, text: "Anything else: drag an .exe or .msi file onto Myskef (Programs page). Programs that an installer adds appear there too.")
@@ -2867,6 +2913,33 @@ struct StatusPill: View {
         .background(Capsule().fill(color.opacity(0.18)))
         .overlay(Capsule().stroke(color.opacity(0.55), lineWidth: 1))
         .contentShape(Capsule())
+    }
+}
+
+/// "Let's set up Myskef" — on every page until the first setup is done.
+struct SetupBanner: View {
+    @EnvironmentObject var model: Myskef
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(Theme.brand)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Let's set up Myskef").font(.headline)
+                Text("One click installs everything Myskef needs: the Wine engine (about 1 GB), the Windows bottle, the DXVK graphics layer and the Epic Games helper. It takes a few minutes, once.")
+                    .font(.caption).foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer()
+            Button("Set up") { model.setup() }
+                .buttonStyle(GlowButtonStyle())
+                .disabled(model.busy)
+        }
+        .padding(14)
+        .background(RoundedRectangle(cornerRadius: 16).fill(Theme.panel))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.pink.opacity(0.45), lineWidth: 1))
+        .padding(.horizontal, 24)
+        .padding(.top, 14)
     }
 }
 

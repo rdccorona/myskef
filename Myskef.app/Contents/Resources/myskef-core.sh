@@ -15,7 +15,7 @@ if [ "$(sysctl -in sysctl.proc_translated 2>/dev/null)" = "1" ] && [ -z "${MYSKE
 fi
 
 APP_NAME="Myskef"
-APP_VERSION="2.12.0"
+APP_VERSION="2.12.1"
 SUPPORT="$HOME/Library/Application Support/Myskef"
 ENGINE_DIR="$SUPPORT/engine"
 BOTTLE="$SUPPORT/bottles/default"
@@ -1434,7 +1434,12 @@ if [ "$HEADLESS" = 1 ]; then
     rc=0
     case "$MODE" in
         status)        cli_status ;;
-        setup)         check_rosetta && install_engine && init_bottle && ensure_graphics || rc=1 ;;
+        setup)         check_rosetta && install_engine && init_bottle && ensure_graphics || rc=1
+                       if [ "$rc" = 0 ]; then
+                           echo "STATUS: Getting the Epic Games helper (legendary)…"
+                           run_epic prepare || echo "(legendary will be downloaded at the first Epic sign-in instead)"
+                           echo "STATUS: Myskef is set up."
+                       fi ;;
         update-engine) FORCE_ENGINE_UPDATE=1; ensure_engine_fresh && ensure_graphics || rc=1 ;;
         play)          cli_play "${1:-Bloons TD 6}" "${2:-}" || rc=1 ;;
         epic)          case "${1:-}" in install|update|launch|uninstall) ensure_ready || rc=1 ;; esac

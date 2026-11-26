@@ -1,4 +1,2 @@
-- Myskef now updates itself: when a new version is out you'll see a banner with what's new and an **Update now** button.
-- The window comes ready-built for Apple silicon and Intel Macs, so Apple's developer tools are no longer needed.
-- New **Guide** page, explanations for every setting, and **Tools → Share Myskef with friends**.
-- Steam is closed in the background when you play an Epic game (frees memory), and Myskef warns you when Low Power Mode slows games down.
+- **Everything installs by itself:** the "Let's set up Myskef" banner now shows on every page until setup is done, and one click installs the Wine engine, the Windows bottle, the DXVK graphics layer and the Epic Games helper (legendary).
+- **Settings → Installed parts** shows what's installed, and what gets downloaded when it's first needed (Steam, DXMT, D3DMetal).

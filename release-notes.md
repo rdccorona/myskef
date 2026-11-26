@@ -1,1 +1,5 @@
-- Small test update: Settings → About now shows where Myskef gets its updates from.
+- **Fixed: Steam games (like Raft) sometimes not starting.** Myskef no longer passes extra options through Steam's launch command, which could make Steam wait for a hidden "allow these options?" prompt. Launch options for games Steam starts go in Steam: right-click the game → Properties → Launch Options.
+- **D3DMetal for Steam games** now starts the game directly (like DXMT), so its launch options always apply.
+- **More accurate Play button:** "Running" now means the game itself is running, not just Steam. If a game never opens, you'll see "Didn't start" instead of a wrong "Running".
+- **Less stutter:** DXVK keeps its shader cache in one place, so shaders compiled once are reused every session.
+- **Lighter logging:** what Steam and games print goes to separate files (logs/programs), keeping Myskef's log small and fast.

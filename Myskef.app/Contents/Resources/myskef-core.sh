@@ -15,7 +15,7 @@ if [ "$(sysctl -in sysctl.proc_translated 2>/dev/null)" = "1" ] && [ -z "${MYSKE
 fi
 
 APP_NAME="Myskef"
-APP_VERSION="2.12.3"
+APP_VERSION="2.12.4"
 SUPPORT="$HOME/Library/Application Support/Myskef"
 ENGINE_DIR="$SUPPORT/engine"
 BOTTLE="$SUPPORT/bottles/default"
@@ -37,7 +37,20 @@ fi
 # classic dialog menu.
 MODE="${1:-menu}"
 if [ "$MODE" = "running" ]; then   # polled by the window: quick, and not logged
-    pgrep -x wineserver >/dev/null 2>&1 && echo "running=yes" || echo "running=no"; exit 0
+    pgrep -x wineserver >/dev/null 2>&1 && echo "running=yes" || echo "running=no"
+    set +o pipefail   # grep -q may stop reading early; that isn't a failure here
+    # With a game's folder name: is the game itself running (not just Steam)?
+    # Wine processes show their program path, e.g. C:\...\common\Raft\Raft.exe
+    if [ -n "${2:-}" ]; then
+        f=$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]')
+        # snapshot first, then match in bash: a grep given the name would find itself
+        procs=$(ps -axo command= | grep -v 'myskef-core.sh' | tr '[:upper:]' '[:lower:]')
+        case "$procs" in
+            *"\\$f\\"*|*"/$f/"*) echo "game=yes" ;;
+            *) echo "game=no" ;;
+        esac
+    fi
+    exit 0
 fi
 if [ "$MODE" = "menu" ]; then HEADLESS=0; else HEADLESS=1; fi
 if [ "$HEADLESS" = 1 ]; then
@@ -188,6 +201,10 @@ perf_env() {
         fi
     } > "$conf"
     export DXVK_CONFIG_FILE="$conf"
+    # Keep DXVK's shader cache in one writable place: a game folder that can't be
+    # written to would otherwise mean recompiling every shader each session (stutter).
+    mkdir -p "$SUPPORT/shader-cache"
+    export DXVK_STATE_CACHE_PATH="$SUPPORT/shader-cache"
 }
 
 perf_menu() {
@@ -722,7 +739,15 @@ APPLESCRIPT
 launch_detached() { # launch_detached <args...>
     setup_env
     [ -n "${GFX_SELECTED:-}" ] || use_graphics "$(global_gfx)" >>"$LOG" 2>&1
-    nohup "$WINE" "$@" >>"$LOG" 2>&1 &
+    # Steam and games can print a lot while they run; that goes to a separate
+    # file per program (replaced each start), so Myskef's own log stays small.
+    local name out
+    name=$(basename "${1:-wine}"); name="${name%.*}"
+    [ "$name" = "start" ] && [ -n "${3:-}" ] && { name=$(basename "$3"); name="${name%.*}"; }
+    mkdir -p "$LOG_DIR/programs"
+    out="$LOG_DIR/programs/$name.log"
+    echo "$(date) starting $name (its output: logs/programs/$name.log)" >> "$LOG"
+    nohup "$WINE" "$@" >"$out" 2>&1 &
     start_ngen_guard
 }
 
@@ -1362,15 +1387,28 @@ cli_steam_play_d3dmetal() {  # cli_steam_play_d3dmetal <appid>
     else
         unset MYSKEF_CEF_EXTRA
     fi
+    local exe gdir gargs i
+    exe=$(steam_game_exe "$id")
+    if [ -z "$exe" ] || [ ! -f "$exe" ]; then
+        echo "ERROR: Couldn't find this game's program file. Open the game's ⋯ → Game settings… and choose DXVK, then Steam starts it itself."
+        return 1
+    fi
+    if ! ps -axo command= | grep -i 'steam\.exe' | grep -v grep | grep -q 'engine-gptk'; then
+        echo "STATUS: Starting Steam for D3DMetal… (the first time, sign in in the window that opens)"
+        (cd "$STEAM_DIR" && launch_detached "$STEAM_EXE" -silent)
+        for i in $(seq 1 120); do pgrep -f 'steamwebhelper' >/dev/null 2>&1 && break; sleep 1; done
+        sleep 12
+    fi
+    gdir=$(dirname "$exe")
+    [ -f "$gdir/steam_appid.txt" ] || echo "$id" > "$gdir/steam_appid.txt" 2>/dev/null
+    export SteamAppId="$id" SteamGameId="$id" SteamOverlayGameId="$id"
+    gargs=$(get_config "GAME_steam:${id}_ARGS")
+    gargs="${gargs:+$gargs }$(unity_quiet_args "$gdir" "$gargs")"
     echo "STATUS: Starting the game with D3DMetal…"
-    # shellcheck disable=SC2046
-    local gargs gdir2; gargs=$(get_config "GAME_steam:${id}_ARGS")
-    gdir2=$(steam_games | awk -F'\t' -v id="$id" '$2 == id { print $6; exit }')
-    gargs="${gargs:+$gargs }$(unity_quiet_args "$gdir2" "$gargs")"
     # shellcheck disable=SC2086
-    (cd "$STEAM_DIR" && launch_detached "$STEAM_EXE" -silent -applaunch "$id" $gargs)
+    (cd "$gdir" && launch_detached "$exe" $gargs)
     sleep 6
-    echo "STATUS: Starting. The first time, sign in to Steam in the window that opens; after that it remembers you."
+    echo "STATUS: The game is starting."
 }
 
 # The main program of an installed Steam game (Mac path).
@@ -1396,11 +1434,10 @@ cli_steam_play() {  # cli_steam_play <appid>
     gfx=$(game_gfx "steam:$id")
     if [ "$gfx" = "d3dmetal" ]; then cli_steam_play_d3dmetal "$id"; return; fi
     if [ "$gfx" = "dxvk" ]; then
-        local sdir sextra
-        sdir=$(steam_games | awk -F'\t' -v id="$id" '$2 == id { print $6; exit }')
-        sextra=$(unity_quiet_args "$sdir" "")
-        # shellcheck disable=SC2086
-        cli_steam_open -silent -applaunch "$id" $sextra; return
+        # No extra options here: Steam would ask for permission in a window that
+        # can stay hidden, and the game would never start. Options for games that
+        # Steam starts go in Steam: right-click the game → Properties → Launch Options.
+        cli_steam_open -silent -applaunch "$id"; return
     fi
     exe=$(steam_game_exe "$id")
     if [ -z "$exe" ] || [ ! -f "$exe" ]; then

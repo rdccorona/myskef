@@ -304,6 +304,8 @@ final class Myskef: ObservableObject, @unchecked Sendable {
     }
     private var swapAtGameStart: Double? = nil
     private var openingSince: [String: Date] = [:]
+    /// The game started with Play, to check that its own program is running.
+    private var trackedGame: Game? = nil
     private var runningSince: [String: Date] = [:]
     @Published var lastPlayedID: String? = UserDefaults.standard.string(forKey: "lastPlayedID")
     @Published var programs: [WinProgram] = []
@@ -633,10 +635,20 @@ final class Myskef: ObservableObject, @unchecked Sendable {
     /// Is a Windows program running? Checked quietly every few seconds.
     func pollRunning() {
         guard loadedStatus else { return }
+        // the folder the tracked game is installed in, e.g. "Raft" or "BloonsTD6"
+        var folderName: String? = nil
+        if let g = trackedGame, playStates[g.id] != nil {
+            let path = g.path.isEmpty ? (installed.first { $0.id == g.id }?.path ?? "") : g.path
+            let name = URL(fileURLWithPath: path).lastPathComponent
+            if !path.isEmpty && !name.isEmpty && name != "/" { folderName = name }
+        }
+        let folderArg = folderName
         DispatchQueue.global(qos: .utility).async { [weak self] in
             let p = Process()
             p.executableURL = URL(fileURLWithPath: "/bin/bash")
-            p.arguments = [Paths.core.path, "running"]
+            var args = [Paths.core.path, "running"]
+            if let folder = folderArg { args.append(folder) }
+            p.arguments = args
             let pipe = Pipe()
             p.standardOutput = pipe
             p.standardError = FileHandle.nullDevice
@@ -644,10 +656,13 @@ final class Myskef: ObservableObject, @unchecked Sendable {
             do { try p.run() } catch { return }
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             p.waitUntilExit()
-            let running = String(decoding: data, as: UTF8.self).contains("running=yes")
+            let out = String(decoding: data, as: UTF8.self)
+            let running = out.contains("running=yes")
+            // the game's own program, when it could be checked; otherwise anything in Wine
+            let gameAlive = out.contains("game=yes") ? true : (out.contains("game=no") ? false : running)
             DispatchQueue.main.async {
                 guard let self = self else { return }
-                self.updatePlayStates(running: running)
+                self.updatePlayStates(running: gameAlive)
                 self.updateHealth(running: running)
                 if self.gameRunning != running {
                     let stopped = self.gameRunning && !running
@@ -717,6 +732,7 @@ final class Myskef: ObservableObject, @unchecked Sendable {
         // only one game at a time is tracked
         for (id, st) in playStates where id != g.id && st != .running { playStates[id] = nil }
         playStates[g.id] = .starting("Getting ready…")
+        trackedGame = g
         let args = g.source == .steam ? ["steam-play", g.appID] : ["play", g.id, g.title]
         job("Starting \(g.title)", args, onSuccess: { [weak self] in
             guard let self = self else { return }
@@ -765,7 +781,8 @@ final class Myskef: ObservableObject, @unchecked Sendable {
                 if running {
                     playStates[id] = .running
                     runningSince[id] = now
-                } else if let t = openingSince[id], now.timeIntervalSince(t) > 90 {
+                } else if let t = openingSince[id],
+                          now.timeIntervalSince(t) > (trackedGame?.source == .steam ? 180 : 90) {
                     playStates[id] = .failed("The game didn't open. Open the activity log to see why.")
                 }
             case .running:
@@ -2158,7 +2175,7 @@ struct GameSettingsSheet: View {
                         .textFieldStyle(.roundedBorder)
                         .font(.system(.body, design: .monospaced))
                     Text(game.source == .steam
-                         ? "Used when Myskef starts the game (DXMT or Wine built-in). On DXVK, Steam's own launch options apply instead (right-click the game in Steam → Properties)."
+                         ? "Used when Myskef starts the game itself (DXMT, D3DMetal, Wine built-in). On DXVK, Steam starts the game, so put launch options in Steam instead: right-click the game → Properties → Launch Options."
                          : "Passed to the game when it starts. Unity games understand -force-vulkan, -force-d3d11, -screen-width 1280 -screen-height 800.")
                         .font(.caption).foregroundColor(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

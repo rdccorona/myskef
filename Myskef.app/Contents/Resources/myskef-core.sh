@@ -15,7 +15,7 @@ if [ "$(sysctl -in sysctl.proc_translated 2>/dev/null)" = "1" ] && [ -z "${MYSKE
 fi
 
 APP_NAME="Myskef"
-APP_VERSION="2.12.2"
+APP_VERSION="2.12.3"
 SUPPORT="$HOME/Library/Application Support/Myskef"
 ENGINE_DIR="$SUPPORT/engine"
 BOTTLE="$SUPPORT/bottles/default"

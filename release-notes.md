@@ -1,1 +1,1 @@
-- **Test update.** If you see this, in-app updates work! After updating, Myskef now confirms it with a green "Myskef updated itself" banner.
+- Small test update: Settings → About now shows where Myskef gets its updates from.

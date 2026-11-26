@@ -2417,6 +2417,7 @@ struct SettingsView: View {
                                     text: "Each time Myskef opens, it asks once whether there's a new version (a tiny request), and asks you before installing.",
                                     isOn: Binding(get: { UserDefaults.standard.object(forKey: "autoUpdateCheck") as? Bool ?? true },
                                                   set: { UserDefaults.standard.set($0, forKey: "autoUpdateCheck"); model.objectWillChange.send() }))
+                    LabeledContent("Updates come from", value: "github.com/rdccorona/myskef")
                     HStack {
                         Button("Check for updates now") { model.checkForUpdates(manual: true) }
                         if let u = model.update {

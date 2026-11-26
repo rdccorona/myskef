@@ -15,7 +15,7 @@ if [ "$(sysctl -in sysctl.proc_translated 2>/dev/null)" = "1" ] && [ -z "${MYSKE
 fi
 
 APP_NAME="Myskef"
-APP_VERSION="2.12.1"
+APP_VERSION="2.12.2"
 SUPPORT="$HOME/Library/Application Support/Myskef"
 ENGINE_DIR="$SUPPORT/engine"
 BOTTLE="$SUPPORT/bottles/default"
@@ -1090,6 +1090,7 @@ sleep 0.5
 rm -rf "$backup/Myskef.app"
 if mv "$app" "$backup/Myskef.app" && mv "$new" "$app"; then
     echo "\$(date) updated Myskef $APP_VERSION -> $newver (previous version kept in $backup)" >> "$LOG"
+    printf '%s\n%s\n' "$APP_VERSION" "$newver" > "$SUPPORT/just-updated"
 else
     [ -d "$app" ] || mv "$backup/Myskef.app" "$app"
     echo "\$(date) update to $newver failed; kept $APP_VERSION" >> "$LOG"

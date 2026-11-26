@@ -1,2 +1,1 @@
-- **Everything installs by itself:** the "Let's set up Myskef" banner now shows on every page until setup is done, and one click installs the Wine engine, the Windows bottle, the DXVK graphics layer and the Epic Games helper (legendary).
-- **Settings → Installed parts** shows what's installed, and what gets downloaded when it's first needed (Steam, DXMT, D3DMetal).
+- **Test update.** If you see this, in-app updates work! After updating, Myskef now confirms it with a green "Myskef updated itself" banner.

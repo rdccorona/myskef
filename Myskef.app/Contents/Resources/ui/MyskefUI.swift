@@ -292,6 +292,16 @@ final class Myskef: ObservableObject, @unchecked Sendable {
     @Published var update: UpdateInfo? = nil
     @Published var updateDismissed = false
     @Published var updatesConfigured = true
+    /// Set right after Myskef has updated itself: (from, to)
+    @Published var justUpdated: (from: String, to: String)? = Myskef.readJustUpdated()
+
+    static func readJustUpdated() -> (from: String, to: String)? {
+        let url = Paths.support.appendingPathComponent("just-updated")
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+        try? FileManager.default.removeItem(at: url)
+        let parts = text.split(separator: "\n").map(String.init)
+        return parts.count >= 2 ? (parts[0], parts[1]) : nil
+    }
     private var swapAtGameStart: Double? = nil
     private var openingSince: [String: Date] = [:]
     private var runningSince: [String: Date] = [:]
@@ -1176,6 +1186,26 @@ struct ContentView: View {
                 .frame(width: 232)
             ZStack(alignment: .bottom) {
                 VStack(spacing: 0) {
+                if let u = model.justUpdated {
+                    HStack(spacing: 12) {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundColor(.green)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Myskef updated itself to \(u.to)").font(.headline)
+                            Text("From \(u.from). Your games, accounts and settings are unchanged.")
+                                .font(.caption).foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Button("OK") { model.justUpdated = nil }
+                            .buttonStyle(GlowButtonStyle())
+                    }
+                    .padding(14)
+                    .background(RoundedRectangle(cornerRadius: 16).fill(Theme.panel))
+                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.green.opacity(0.5), lineWidth: 1))
+                    .padding(.horizontal, 24)
+                    .padding(.top, 14)
+                }
                 if model.loadedStatus && !model.isSetUp && page != .library {
                     SetupBanner()
                         .transition(.move(edge: .top).combined(with: .opacity))

@@ -3,7 +3,7 @@
 Play Windows games (Epic Games, Steam, or any `.exe`) on a Mac, for free.
 
 **Download:** grab `Myskef.zip` (and `Read-me-first.txt`) from the latest release on the
-[Releases page](../../releases/latest). Unzip, move Myskef to Applications, open it.
+[Releases page](https://github.com/rdccorona/myskef/releases/latest). Unzip, move Myskef to Applications, open it.
 macOS will block it the first time because it isn't from a registered developer:
 on macOS 15 open **System Settings → Privacy & Security → Open Anyway**.
 
